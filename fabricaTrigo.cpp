@@ -57,21 +57,17 @@ void* molerHarina(void* args) {
         float usoAgua = (m->harinaPorMin) / 20;  
 
         pthread_mutex_lock(&mutex_agua);
-
         while (m->agua < usoAgua) {
-            pthread_mutex_lock(&mutex_out);
-            cout << "Molino " << m->id << " está esperando agua..." << endl;
-            pthread_mutex_unlock(&mutex_out);
-            m->necesitaAgua = true;
-            pthread_cond_wait(&cond_agua, &mutex_agua); 
+            m->necesitaAgua = true; 
+            pthread_cond_wait(&cond_agua, &mutex_agua);
         }
+        pthread_mutex_unlock(&mutex_agua);
         
-        while (m->trigo <= 50) {
-            pthread_mutex_lock(&mutex_trigo);
-            m->necesitaTrigo = true; 
-            pthread_cond_signal(&cond_trigo); 
-            pthread_mutex_unlock(&mutex_trigo);
+        pthread_mutex_lock(&mutex_trigo);
+        while (m->trigo <= 50) { 
+            pthread_cond_wait(&cond_trigo, &mutex_trigo);
         }
+        pthread_mutex_unlock(&mutex_trigo);
 
         Sleep(1000);
         m->agua -= usoAgua;
@@ -81,8 +77,6 @@ void* molerHarina(void* args) {
         pthread_mutex_lock(&mutex_out);
         cout << "Molino " << m->id << " ha producido " << m->harinaPorMin << " lbs de harina, agua restante: " << m->agua << ", trigo restante: " << m->trigo << endl;
         pthread_mutex_unlock(&mutex_out);
-
-        pthread_mutex_unlock(&mutex_agua);
 
         if (m->harinaProducida >= 220) {
             pthread_mutex_lock(&mutex_empacadora);
@@ -104,22 +98,21 @@ void* molerHarina(void* args) {
 
 void* entregarTrigo(void* args) {
     Silo* s = (Silo*) args;
-    int index = s->id-1;
+    int index = s->id - 1;
 
-    while (empacadoras[index].costalesProducidos < empacadoras[index].costalesAProducir) {
+    for (int i = 0; i < 5000; i++)
+    {
         pthread_mutex_lock(&mutex_trigo);
-
-        if (molinos[index].necesitaTrigo) {
+        if (molinos[index].trigo <= 50) {
             molinos[index].trigo += s->trigo;
-            molinos[index].necesitaTrigo = false;
             pthread_mutex_lock(&mutex_out);
             cout << "Silo " << s->id << " entrega 1 quintal de trigo al molino " << molinos[index].id << "." << endl;
             pthread_mutex_unlock(&mutex_out);
-            
+
             pthread_cond_signal(&cond_trigo);
         }
-
-        pthread_mutex_unlock(&mutex_trigo);        
+        pthread_mutex_unlock(&mutex_trigo);
+        Sleep(10);
     }
     pthread_exit(NULL);
     return 0;
@@ -140,35 +133,36 @@ bool empacadoFinalizado() {
 void* dispensarAgua(void* args) {
     Dispensadora* d = (Dispensadora*) args;
 
-    while (!empacadoFinalizado() && d->agua > 0) {
+    for (int j = 0; j < 5000; j++) {
         pthread_mutex_lock(&mutex_agua);
-
         for (int i = 0; i < 3; i++) {
-            if (molinos[i].necesitaAgua && d->agua > 0) {
+            if (molinos[i].necesitaAgua && d->agua > 0) {  // Si algún molino necesita agua
                 molinos[i].agua += 1;
-                d->agua -= 1;
                 molinos[i].necesitaAgua = false;
+                d->agua -= 1;
                 pthread_mutex_lock(&mutex_out);
                 cout << "Molino " << molinos[i].id << " recibe 1 litro de agua. Agua restante en dispensadora: " << d->agua << " litros." << endl;
                 pthread_mutex_unlock(&mutex_out);
-                
-                pthread_cond_signal(&cond_agua);
+
+                pthread_cond_broadcast(&cond_agua);
             }
         }
-
         pthread_mutex_unlock(&mutex_agua);
+        Sleep(10);
     }
-
+    
     pthread_mutex_lock(&mutex_out);
     if (d->agua <= 0) {
         cout << "La dispensadora se quedó sin agua." << endl;
     } else {
-        cout << "La dispensadora ha detenido su operación porque el empacado ha finalizado." << endl;
+        cout << "La dispensadora ha terminado su operación." << endl;
     }
     pthread_mutex_unlock(&mutex_out);
+
     pthread_exit(NULL);
     return 0;
 }
+
 
 void* empacarHarina(void* args) {
     Empacadora* e = (Empacadora*) args;
