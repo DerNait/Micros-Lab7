@@ -4,7 +4,6 @@
 #include <Windows.h>
 #include <iostream>
 #include <string.h>
-#include <cstring>
 
 using namespace std;
 
@@ -25,8 +24,6 @@ void* toDecimal(void* args) {
 
     t->converted = dec[t->index];
 
-    cout << t->converted << " ";
-
     return 0;
 }
 
@@ -46,19 +43,58 @@ int main () {
     string texto;
 
     cout << "Ingresa la cadena a imprimir" << endl;
-    cin >> texto;
+    getline(cin, texto);
 
-    char* arreglo = new char[texto.size() + 1];
-    hilos = texto.size();
+    char* arreglo = new char[texto.length() + 1];
+    hilos = texto.length();
 
     Threads threads[hilos];
 
     cout << "La cantidad de hilos a usar es: " << hilos << endl;
 
+    //Decodificación a decimal
     for (int i = 0; i < hilos; i++) {
-        threads[i].index = 1;
+
+        char c = texto[i];
+        for (int j = 0; j < sizeof(characters) / sizeof(characters[0]); j++) {
+            if (characters[j][0] == c) {
+                threads[i].index = j;
+                break;
+            }
+        }
         pthread_create(&threads[i].thread, NULL, toDecimal, (void*)&threads[i]);
     }
+
+    for (int i = 0; i < hilos; i++) {
+        pthread_join(threads[i].thread, NULL);
+    }
+
+    for (int i = 0; i < hilos; i++) {
+        cout << threads[i].converted << " ";
+    }
+    cout << endl;
+
+    //Decodificación a hex
+    for (int i = 0; i < hilos; i++) {
+
+        string c = threads[i].converted;
+        for (int j = 0; j < sizeof(characters) / sizeof(characters[0]); j++) {
+            if (characters[j] == c) {
+                threads[i].index = j;
+                break;
+            }
+        }
+        pthread_create(&threads[i].thread, NULL, toHex, (void*)&threads[i]);
+    }
+
+    for (int i = 0; i < hilos; i++) {
+        pthread_join(threads[i].thread, NULL);
+    }
+
+    for (int i = 0; i < hilos; i++) {
+        cout << threads[i].converted << " ";
+    }
+    cout << endl;
 
     return 0;
 }
