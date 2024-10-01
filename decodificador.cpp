@@ -42,8 +42,13 @@ int main () {
     int hilos;
     string texto;
 
-    cout << "Ingresa la cadena a imprimir" << endl;
+    cout << "Ingresa la cadena a imprimir (de no mas de 100 caracteres)" << endl;
     getline(cin, texto);
+
+    if (texto.length() > 100) {
+        cout << "Mas de 100 caracteres, finalizando el programa" << endl;
+        return -1;
+    }
 
     char* arreglo = new char[texto.length() + 1];
     hilos = texto.length();
@@ -68,7 +73,7 @@ int main () {
     for (int i = 0; i < hilos; i++) {
         pthread_join(threads[i].thread, NULL);
     }
-
+    cout << "En decimal: ";
     for (int i = 0; i < hilos; i++) {
         cout << threads[i].converted << " ";
     }
@@ -91,6 +96,7 @@ int main () {
         pthread_join(threads[i].thread, NULL);
     }
 
+    cout << "En hexadecimal: ";
     for (int i = 0; i < hilos; i++) {
         cout << threads[i].converted << " ";
     }
