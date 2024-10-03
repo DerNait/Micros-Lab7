@@ -1,3 +1,9 @@
+/* 
+Kevin Villagran - 23584 
+Laboratorio #7
+Ejercicio 2
+*/
+
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
